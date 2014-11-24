@@ -1,15 +1,16 @@
 Setup = function(){
   
-  extra.packages.required = c('zoo','psych') # zoo for MAR(), NP(); psych for geometric.mean
-  
-  # install packages if needed
-  for (p in extra.packages.required){
-    if (!suppressWarnings(library(p, character.only=T, logical.return=T))){
-      cat(sprintf('\n\nInstalling %s...\n', p))
-      install.packages(p)
-      require(p, character.only=T)
-    }
-  }
+# this code bombs the shinyapps.io deploy, so commenting out and relying on package prefixes to guide install zoo::, psych::
+#   extra.packages.required = c('zoo','psych') # zoo for MAR(), NP(); psych for geometric.mean
+#   
+#   # install packages if needed
+#   for (p in extra.packages.required){
+#     if (!suppressWarnings(library(p, character.only=T, logical.return=T))){
+#       cat(sprintf('\n\nInstalling %s...\n', p))
+#       install.packages(p)
+#       require(p, character.only=T)
+#     }
+#   }
   
   # csv comparison function, made global
   csv_compare <<- function(o, step, prefix=sprintf('temp/%s_MAR', basename(getwd()))){
@@ -254,7 +255,7 @@ Setup = function(){
 }
 
 MAR = function(layers, status_years){  
-  # layers used: mar_harvest_tonnes, mar_harvest_species, mar_sustainability_score, mar_coastalpopn_inland25mi, mar_trend_years
+  # layers used: mar_harvest_tonnes, mar_harvest_species, mar_sustainability_score, mar_coastalpopn_inland25km, mar_trend_years
   harvest_tonnes = rename(
     SelectLayersData(layers, layers='mar_harvest_tonnes', narrow=T),
     c('id_num'='rgn_id', 'category'='species_code', 'year'='year', 'val_num'='tonnes'))
@@ -265,7 +266,7 @@ MAR = function(layers, status_years){
     SelectLayersData(layers, layers='mar_sustainability_score', narrow=T),
     c('id_num'='rgn_id', 'category'='species', 'val_num'='sust_coeff'))
   popn_inland25mi = rename(
-    SelectLayersData(layers, layers='mar_coastalpopn_inland25mi', narrow=T),
+    SelectLayersData(layers, layers='mar_coastalpopn_inland25km', narrow=T),
     c('id_num'='rgn_id', 'year'='year', 'val_num'='popsum'))
   trend_years = rename(
     SelectLayersData(layers, layers='mar_trend_years', narrow=T),
@@ -549,12 +550,12 @@ NP = function(scores, layers, year_max, debug=F){
       hab_rky %>%
         filter(km2 > 0) %>%
         select(rgn_id, rky_km2=km2), 
-      by='rgn_id')
-  
-  b <- as.data.frame(b)
-
-  b$km2 = rowSums(b[,c('rky_km2','coral_km2')], na.rm=T)
-  b = filter(b, km2 > 0)
+      by='rgn_id') %>%
+    rowwise() %>%
+    mutate(
+      km2 = sum(c(rky_km2, coral_km2), na.rm=T)) %>%
+    group_by(rgn_id, product) %>%
+    filter(km2 > 0)
   
   # exposure: combine areas, get tonnes / area, and rescale with log transform
   E = 
@@ -850,7 +851,7 @@ TR = function(layers, year_max, debug=FALSE, pct_ref=90){
   # get regions
   rgns = layers$data[[conf$config$layer_region_labels]] %>%
     select(rgn_id, rgn_label = label)
-    
+  
   # merge layers and calculate score
   d = layers$data[['tr_jobs_tourism']] %>%
     select(rgn_id, year, Ed=count) %>%
@@ -874,6 +875,24 @@ TR = function(layers, year_max, debug=FALSE, pct_ref=90){
       Xtr   = E * S ) %>%
     merge(rgns, by='rgn_id') %>%
     select(rgn_id, rgn_label, year, Ed, L, U, S, E, Xtr)
+  
+  # feed NA for subcountry regions without sufficient data (vs global analysis)
+  if (conf$config$layer_region_labels!='rgn_global' & sum(!is.na(d$Xtr))==0) {
+    scores_TR = rbind_list(
+      rgns %>%
+        select(region_id = rgn_id) %>%
+        mutate(
+          goal      = 'TR',
+          dimension = 'status',
+          score     = NA),
+      rgns %>%
+        select(region_id = rgn_id) %>%
+        mutate(
+          goal      = 'TR',
+          dimension = 'trend',
+          score     = NA))
+    return(scores_TR)
+  }
   
 #   if (debug){
 #     # compare with pre-gapfilled data
@@ -930,34 +949,33 @@ TR = function(layers, year_max, debug=FALSE, pct_ref=90){
   # setup data for georegional gapfilling (remove Antarctica rgn_id=213)
   if (!file.exists('temp')) dir.create('temp', recursive=T)
   csv = sprintf('temp/%s_TR_1-gapfill-georegions.csv', basename(getwd()))
-  d_g = gapfill_georegions(
-    data              = d %>%
-      filter(rgn_id!=213) %>%
-      select(rgn_id, year, Xtr),
-    fld_id            = 'rgn_id',
-    fld_value         = 'Xtr',
-    fld_weight        = NULL,
-    georegions        = georegions,    
-    ratio_weights     = FALSE,
-    georegion_labels  = georegion_labels,
-    r0_to_NA          = TRUE, 
-    attributes_csv    = csv)
-  
-  # regions with Travel Warnings at http://travel.state.gov/content/passports/english/alertswarnings.html
-  rgn_travel_warnings = c('Djibouti'=46, 'Eritrea'=45, 'Somalia'=44, 'Mauritania'=64)
-  # TODO: check if regions with travel warnings are gapfilled (manually checked for 2013)
-  d_g = rbind_list(
-    d_g %>%
-      filter(!rgn_id %in% rgn_travel_warnings),
-    d_g %>%
-      filter(rgn_id %in% rgn_travel_warnings) %>%
-      mutate(
-        Xtr = 0.1 * Xtr))
-  # read.csv(csv) %>%
-  #   filter(r1_label=='Africa' & yr==year_max) %>%
-  #   select(v) %>% colMeans(na.rm=T) # Africa average: 0.021
-  # South Africa: 0.027 -> 42.79
-  # Namibia: 	    0.015 -> 23.06  
+  if (conf$config$layer_region_labels=='rgn_global'){
+    d_g = gapfill_georegions(
+      data              = d %>%
+        filter(rgn_id!=213) %>%
+        select(rgn_id, year, Xtr),
+      fld_id            = 'rgn_id',
+      fld_value         = 'Xtr',
+      fld_weight        = NULL,
+      georegions        = georegions,    
+      ratio_weights     = FALSE,
+      georegion_labels  = georegion_labels,
+      r0_to_NA          = TRUE, 
+      attributes_csv    = csv)
+    
+    # regions with Travel Warnings at http://travel.state.gov/content/passports/english/alertswarnings.html
+    rgn_travel_warnings = c('Djibouti'=46, 'Eritrea'=45, 'Somalia'=44, 'Mauritania'=64)
+    # TODO: check if regions with travel warnings are gapfilled (manually checked for 2013)
+    d_g = rbind_list(
+      d_g %>%
+        filter(!rgn_id %in% rgn_travel_warnings),
+      d_g %>%
+        filter(rgn_id %in% rgn_travel_warnings) %>%
+        mutate(
+          Xtr = 0.1 * Xtr))
+  } else {
+    d_g = d
+  }
     
   # filter: limit to 5 intervals (6 years worth of data)
   #   NOTE: original 2012 only used 2006:2010 whereas now we're using 2005:2010
@@ -996,7 +1014,7 @@ TR = function(layers, year_max, debug=FALSE, pct_ref=90){
   if (debug){
     write.csv(d_g_f_r, sprintf('temp/%s_TR_2-filtered-rescaled.csv', basename(getwd())), row.names=F, na='')
   }
-  
+    
   # calculate trend
   d_t = d_g_f_r %>%
     filter(!is.na(Xtr_rmax)) %>%
@@ -1020,15 +1038,17 @@ TR = function(layers, year_max, debug=FALSE, pct_ref=90){
   d_b = rbind(d_t, d_s) %>%
     mutate(goal = 'TR')  
   
-  # assign NA for uninhabitated islands
-  unpopulated = layers$data[['le_popn']] %>%
-    group_by(rgn_id) %>%
-    filter(count==0) %>%
-    select(rgn_id)
-  d_b$score = ifelse(d_b$rgn_id %in% unpopulated$rgn_id, NA, d_b$score)  
-
-  # replace North Korea value with 0
-  d_b$score[d_b$rgn_id == 21] = 0
+  if (conf$config$layer_region_labels=='rgn_global'){
+    # assign NA for uninhabitated islands
+    unpopulated = layers$data[['le_popn']] %>%
+      group_by(rgn_id) %>%
+      filter(count==0) %>%
+      select(rgn_id)
+    d_b$score = ifelse(d_b$rgn_id %in% unpopulated$rgn_id, NA, d_b$score)  
+  
+    # replace North Korea value with 0
+    d_b$score[d_b$rgn_id == 21] = 0
+  }
   
   # final scores
   scores = d_b %>%
@@ -1063,431 +1083,268 @@ TR = function(layers, year_max, debug=FALSE, pct_ref=90){
   return(scores)
 }
 
-LIV_ECO = function(layers, subgoal, liv_workforcesize_year, eco_rev_adj_min_year){
-
-  g.component = c('LIV'='livelihood','ECO'='economy')[[subgoal]]
+LIV_ECO = function(layers, subgoal){
   
-  # get status_model
-  status_model_long = SelectLayersData(
-    layers, narrow=T,
-    layers=c('le_jobs_cur_base_value','le_jobs_ref_base_value','le_jobs_cur_adj_value','le_jobs_ref_adj_value',
-             'le_rev_cur_base_value','le_rev_ref_base_value','le_rev_cur_adj_value','le_rev_ref_adj_value',
-             'le_wage_cur_base_value','le_wage_ref_base_value','le_wage_cur_adj_value','le_wage_ref_adj_value'))
-  status_model = status_model_long %>%
-    select(cntry_key = id_chr, sector = category, val_num, layer) %>%
-    mutate(metric = str_replace(layer, 'le_(jobs|rev|wage)_(.*)', '\\1'),
-           field  = str_replace(layer, 'le_(jobs|rev|wage)_(.*)', '\\2')) %>% 
-    dcast(metric + cntry_key + sector ~ field, value.var='val_num')
+  ## read in all data:
   
-  # get gdp per capita, at ppp
-  ppp = SelectLayersData(layers, layers='le_gdp_pc_ppp') %>%
-    select(cntry_key=id_chr, year, usd=val_num)
+  # gdp, wages, jobs and workforce_size data 
+  le_gdp   = SelectLayersData(layers, layers='le_gdp')  %>%
+    select(rgn_id = id_num, year, gdp_usd = val_num)
   
-  # country to region aggregation weight for livelihood
-  workforce_adj = SelectLayersData(layers, layers='le_workforcesize_adj') %>%
-    select(cntry_key=id_chr, year, jobs=val_num)
+  le_wages = SelectLayersData(layers, layers='le_wage_sector_year') %>%
+    select(rgn_id = id_num, year, sector = category, wage_usd = val_num)
   
-  # country to region aggregation weight for economy
-  rev_adj = SelectLayersData(layers, layers='le_revenue_adj') %>%
-    select(cntry_key=id_chr, year, usd=val_num)
+  le_jobs  = SelectLayersData(layers, layers='le_jobs_sector_year') %>%
+    select(rgn_id = id_num, year, sector = category, jobs = val_num)
   
-  # compute the corrected relative value per metric per country, for JOBS
-  status_jobs_rev = status_model %>%
-    filter(ref_base_value != 0 & ref_adj_value != 0 & metric %in% c('jobs', 'rev')) %>%
-    group_by(metric, cntry_key) %>%
-    summarise(
-      score    = (sum(cur_base_value, na.rm=T) / sum(ref_base_value, na.rm=T)) / (mean(cur_adj_value, na.rm=T) / mean(ref_adj_value, na.rm=T)),
-      n_sector = n()) %>%
-    arrange(metric, cntry_key)
+  le_workforce_size = SelectLayersData(layers, layers='le_workforcesize_adj') %>%
+    select(rgn_id = id_num, year, jobs_all = val_num)
   
-  # compute the corrected relative value per metric per country, for WAGE
-  # 0. extract w'_i = (w_c/w_r)/(W_c/W_r) for each sector i per country
-  t0 = status_model %>%
-    filter(metric=='wage' & ref_base_value != 0 & ref_adj_value != 0) %>%
-    mutate(w_prime_i = (cur_base_value / ref_base_value) / (cur_adj_value / ref_adj_value)) %>%
-    select(metric, cntry_key, sector, w_prime_i) %>%
-    group_by(metric, cntry_key) %>%
-    summarise(w_prime  = mean(w_prime_i, na.rm=T),
-              n_sector = n()) %>%
-    arrange(metric, cntry_key)
+  le_unemployment = SelectLayersData(layers, layers='le_unemployment') %>%
+    select(rgn_id = id_num, year, pct_unemployed = val_num)
   
-  # 1. let w' = unweighted mean(w'_i) across all sector i per country
-  # 2. multiple w' by the most recent purchasing power parity (PPP) value for the country  
-  p = ppp %>%
-    arrange(cntry_key, year) %>%
-    group_by(cntry_key) %>%
-    summarise(year     = last(year),
-              ppp_last = last(usd)) %>%
-    filter(!is.na(ppp_last)) %>%
-    arrange(cntry_key)
-  t2 = t0 %>%
-    merge(p, by='cntry_key') %>%
-    mutate(score = w_prime * ppp_last) %>%
-    select(metric, cntry_key, score, n_sector) %>%
-    arrange(metric, cntry_key)
+  # debug
+  #     le_gdp            = read.csv('eez2014/layers/le_gdp.csv')
+  #     le_wages          = read.csv('eez2014/layers/le_wage_sector_year.csv')
+  #     le_jobs           = read.csv('eez2014/layers/le_jobs_sector_year.csv')  
+  #     le_workforce_size = read.csv('eez2014/layers/le_workforcesize_adj.csv')
+  #     le_unemployment   = read.csv('eez2014/layers/le_unemployment.csv')
   
-  # 3. set the best country (PPP-adjusted average wage) equal to 1.0 and then rescale all countries to that max
-  max_wage_score = max(t2$score, na.rm=T)
-  status_wage = t2 %>%
-    mutate(score = score / max_wage_score)
+  # multipliers from Table S10 (Halpern et al 2012 SOM)
+  multipliers_jobs = data.frame('sector' = c('tour','cf', 'mmw', 'wte','mar'), 
+                                'multiplier' = c(1, 1.582, 1.915, 1.88, 2.7)) # no multiplers for tour (=1)
+  # multipliers_rev  = data.frame('sector' = c('mar', 'tour'), 'multiplier' = c(1.59, 1)) # not used because GDP data is not by sector
   
-  # combine the corrected relative values into a single status score
-  status_model_combined = ungroup(status_jobs_rev) %>%
-    rbind(status_wage)
-  status_score = status_model_combined %>%
-    # liv
-    dcast(cntry_key ~ metric, value.var='score') %>%
-    group_by(cntry_key) %>%
-    mutate(
-      value     = mean(c(jobs, wage), na.rm=T),
-      component = 'livelihood') %>%
-    select(cntry_key, component, value) %>%
-    ungroup() %>% 
-    arrange(cntry_key, component, value) %>%
-    # eco
-    rbind(status_model_combined %>%
-            filter(metric=='rev') %>%
-            mutate(
-              value     = score,
-              component = 'economy') %>%
-            select(cntry_key, component, value)) %>%
-    # order
-    filter(!is.na(value)) %>%
-    arrange(cntry_key, component) %>%
-    # clamp
-    mutate(score = pmin(value, 1))
   
-  # countries to regions
-  cntry_rgn = layers$data[['cntry_rgn']] %>%
-    select(rgn_id, cntry_key) %>%
-    merge(
-      SelectLayersData(layers, layers='rgn_labels') %>%
-        select(rgn_id=id_num, rgn_name=val_chr),
-      by='rgn_id', all.x=T) %>%
-    arrange(rgn_name, cntry_key) %>%
-    select(rgn_id, rgn_name, cntry_key)
-
-  # update country to region lookups
-  # TODO: use name_to_rgn
-  suppressWarnings({ # Warning message: In rbind_list__impl(environment()) : Unequal factor levels: coercing to character
-    cntry_rgn = cntry_rgn %>%
+  # calculate employment counts
+  le_employed = le_workforce_size %>%
+    left_join(le_unemployment, by = c('rgn_id', 'year')) %>%
+    mutate(proportion_employed = (100 - pct_unemployed) / 100, 
+           employed            = jobs_all * proportion_employed)
+  
+  # reworded from SOM p.26-27
+  #reference point for wages is the reference region (r) with the highest average wages across all sectors. 
+  #Reference points for jobs (j) and revenue (e) employ a moving baseline. The two metrics (j, e) are calculated
+  #as relative values: the value in the current year (or most recent year), c, relative to the value in a recent 
+  #moving reference period, r, defined as 5 years prior to c. This reflects an implicit goal of maintaining coastal
+  #livelihoods and economies (L&E) on short time scales, allowing for decadal or generational shifts in what people 
+  #want and expect for coastal L&E. The most recent year c must be 2000 or later in order for the data to be included.
+  
+  liv =
+    # adjust jobs
+    le_jobs %>%
+    left_join(multipliers_jobs, by = 'sector') %>%
+    mutate(jobs_mult = jobs * multiplier) %>%  # adjust jobs by multipliers
+    left_join(le_employed, by= c('rgn_id', 'year')) %>%
+    mutate(jobs_adj = jobs_mult * proportion_employed) %>% # adjust jobs by proportion employed
+    left_join(le_wages, by=c('rgn_id','year','sector')) %>%
+    arrange(year, sector, rgn_id)
+  
+  # LIV calculations ----
+  
+  # LIV status
+  liv_status = liv %>%
+    filter(!is.na(jobs_adj) & !is.na(wage_usd))
+  # aia/subcountry2014 crashing b/c no concurrent wage data, so adding this check
+  if (nrow(liv_status)==0){
+    liv_status = liv %>%
+      select(region_id=rgn_id) %>%
+      group_by(region_id) %>%
+      summarize(
+        goal      = 'LIV',
+        dimension = 'status',
+        score     = NA)
+    liv_trend = liv %>%
+      select(region_id=rgn_id) %>%
+      group_by(region_id) %>%
+      summarize(
+        goal      = 'LIV',
+        dimension = 'trend',
+        score     = NA)
+  } else {
+    liv_status = liv_status %>%
+      filter(year >= max(year, na.rm=T) - 4) %>% # reference point is 5 years ago
+      arrange(rgn_id, year, sector) %>%
+      # summarize across sectors
+      group_by(rgn_id, year) %>%
+      summarize(
+        # across sectors, jobs are summed
+        jobs_sum  = sum(jobs_adj, na.rm=T),
+        # across sectors, wages are averaged
+        wages_avg = mean(wage_usd, na.rm=T)) %>%
+      group_by(rgn_id) %>%
+      arrange(rgn_id, year) %>%
       mutate(
-        cntry_key = revalue(cntry_key, c(
-          'SCG'            = 'MNE',  # used to be Serbia (no coast) and Montenegro (has coast) in Nature 2012
-          'Aruba'          = 'ABW',  # ABW and ANT EEZs got split...
-          'Bonaire'        = 'ANT',
-          'Curacao'        = 'ANT',
-          'Sint Eustatius' = 'ANT',
-          'Saba'           = 'ANT',
-          'Brunei'         = 'BRN',  # Brunei new country in Malaysia
-          'Malaysia'       = 'MYS'))) %>%
-      rbind_list(
-        data.frame(rgn_id=221, rgn_name='Northern Saint-Martin', cntry_key='BLM'),  # BLM is Saint Barthélemy, included within Northern Saint-Martin (MAF)
-        data.frame(rgn_id=209, rgn_name=                'China', cntry_key='HKG'),  # add Hong Kong to China (CHN)
-        data.frame(rgn_id=209, rgn_name=                'China', cntry_key='MAC'))  # add Macau to China (CHN)
-  })
-  cntry_landlocked = c('BDI','BOL','BWA','CHE','LUX','MKD','MWI','PRY','PSE','SCG','SVK','SWZ','TKM','UGA','ZMB')
-  
-  # remove landlocked countries and check for any country codes still not matched
-  status_score = filter(status_score, !cntry_key %in% cntry_landlocked)
-  if (sum(!status_score$cntry_key %in% cntry_rgn$cntry_key) != 0){
-    stop(sprintf('LIV_ECO status missing country to region lookup for: %s.', paste(setdiff(status_score$cntry_key, cntry_rgn$cntry_key), collapse=', ')))
-  }
-
-  # get weights, for 1) aggregating to regions and 2) georegionally gap filling
-  weights = workforce_adj %>%
-    filter(year==liv_workforcesize_year) %>%
-    select(cntry_key, w=jobs) %>%
-    mutate(component='livelihood') %>%
-    rbind(
-      rev_adj %>%
-        select(cntry_key, year, w=usd) %>%
-        filter(year >= eco_rev_adj_min_year) %>%
-        arrange(cntry_key, year) %>%
-        group_by(cntry_key) %>%
-        summarize(w=last(w)) %>%
-        mutate(component='economy'))
-  
-  # aggregate countries to regions by weights
-  s_r = status_score %>%
-    merge(cntry_rgn, by='cntry_key', all.x=T) %>%
-    merge(weights, by=c('cntry_key','component'), all.x=T) %>%
-    select(component, rgn_id, rgn_name, cntry_key, score, w) %>%
-    arrange(component, rgn_name, cntry_key) %>%
-    group_by(component, rgn_id, rgn_name) %>%
-    summarize(cntry_w     = paste(cntry_key[!is.na(w)], collapse=','),
-              cntry_w_na  = paste(cntry_key[is.na(w)], collapse=','),
-              n           = n(),
-              n_w_na      = sum(is.na(w)),
-              score_w_avg = weighted.mean(score, w),
-              score_avg   = mean(score),
-              w_sum       = sum(w, na.rm=T)) %>%
-    mutate(score = ifelse(!is.na(score_w_avg), score_w_avg, score_avg)) %>%
-    ungroup()
-  #print(filter(s_r, n>1) %>% as.data.frame())
-  # 2013:
-  #    component rgn_id                                            rgn_name           cntry_w cntry_w_na n n_w_na score_w_avg score_avg        w_sum     score
-  # 1    economy    116 Puerto Rico and Virgin Islands of the United States           PRI,VIR            2      0   0.8764356 0.4977907 1.012454e+11 0.8764356
-  # 2    economy    140                           Guadeloupe and Martinique           GLP,MTQ            2      0   0.3550632 0.3572914 1.876348e+10 0.3550632
-  # 3    economy    163                                       United States USA,Alaska,Hawaii            3      0   0.9982232 0.9437773 1.499130e+13 0.9982232
-  # 4    economy    209                                               China               CHN        HKG 2      1          NA 0.9925451 7.603540e+12 0.9925451
-  # 5    economy    224                                               Chile CHL,Easter Island            2      0   1.0000000 1.0000000 2.485850e+11 1.0000000
-  # 6 livelihood    116 Puerto Rico and Virgin Islands of the United States           PRI,VIR            2      0   0.5212928 0.5484682 1.508586e+06 0.5212928
-  # 7 livelihood    140                           Guadeloupe and Martinique                      GLP,MTQ 2      2          NA 0.9650846 0.000000e+00 0.9650846
-  # 8 livelihood    209                                               China           CHN,HKG            2      0   0.7381191 0.8684414 7.868545e+08 0.7381191
-  #s_r = select(s_r, component, region_id=rgn_id, rgn_name, score, w=w_sum) %>% head()
-  
-  # setup georegions gapfill by region
-  georegions = SelectLayersData(layers, layers='rgn_georegions') %>%
-    select(rgn_id=id_num, level=category, georgn_id=val_num) %>%
-    dcast(rgn_id ~ level, value.var='georgn_id')
-    
-  # georegional gap fill ----
-  data = s_r %>%
-    filter(component==g.component) %>%
-    as.data.frame() %>%
-    select(rgn_id, score, w_sum)
-  
-  # georegional gapfill, and output gapfill_georegions attributes
-  if (!file.exists('temp')) dir.create('temp', recursive=T)
-  csv = sprintf('temp/eez2013_%s-status-gapfill-georegions.csv', subgoal)
-  s_r_g = gapfill_georegions(
-    data              = data,
-    fld_id            = 'rgn_id',
-    fld_value         = 'score',
-    fld_weight        = 'w_sum',
-    georegions        = georegions,    
-    ratio_weights     = FALSE,
-    georegion_labels  = NULL,
-    r0_to_NA          = TRUE, 
-    attributes_csv    = csv)
-  
-  status = s_r_g %>% 
-    select(region_id=rgn_id, score) %>%    
-    mutate(
-      goal      = subgoal,
-      dimension = 'status',
-      score     = score * 100) %>%
-    arrange(region_id)
-     
-  # trend layers ----
-  le_unemployment     = layers$data[['le_unemployment']]
-  le_gdp              = layers$data[['le_gdp']]
-  le_jobs_sector_year = layers$data[['le_jobs_sector_year']]
-  le_rev_sector_year  = layers$data[['le_rev_sector_year']]
-  le_wage_sector_year = layers$data[['le_wage_sector_year']]
-  
-  suppressWarnings({ # Warning message: In rbind_list__impl(environment()) : Unequal factor levels: coercing to character
-    #browser()
-    
-    # adjustments
-    adjustments = rbind_list(
-      le_unemployment %>% 
-        mutate(
-          metric='jobs',
-          value = 100 - percent) %>%
-        select(metric, cntry_key, year, value),
-      le_gdp %>% 
-        mutate(
-          metric='rev') %>%
-        select(metric, cntry_key, year, value=usd))
-    
-    # metric-country-sector-year
-    mcsy = rbind_list(
-      le_jobs_sector_year %>%
-        mutate(metric='jobs'),
-      le_rev_sector_year %>%
-        mutate(metric='rev'),
-      le_wage_sector_year %>%
-        mutate(metric='wage')) %>%
-      select(metric, cntry_key, sector, year, value)
-
-  })
-  
-  # merge metric-country-sector-year with adjustments
-  mcsy = mcsy %>% 
-    select(metric, cntry_key, sector, year, base_value=value) %>%
-    left_join(
-      adjustments %>% 
-        select(metric, cntry_key, year, adj_value=value),
-      by=c('metric','cntry_key','year')) %>%
-    mutate(
-      adj_value = ifelse(metric=='wage', 1, adj_value),
-      value = base_value / adj_value) %>% 
-    arrange(metric, cntry_key, year)
-  
-  # trend per metric-country-sector, based on 5 intervals (6 years of data) 
-  mcs = 
-    mcsy %>%
-      # for clip-n-ship where cntry_key is one value, drops factor to integer so adding this bit
+        # reference for jobs [j]: value in the current year (or most recent year) [c], relative to the value in a recent moving reference period [r] defined as 5 years prior to [c]
+        jobs_sum_first  = first(jobs_sum),                     # note:  `first(jobs_sum, order_by=year)` caused segfault crash on Linux with dplyr 0.3.0.2, so using arrange above instead
+        # original reference for wages [w]: target value for average annual wages is the highest value observed across all reporting units
+        # new reference for wages [w]: value in the current year (or most recent year) [c], relative to the value in a recent moving reference period [r] defined as 5 years prior to [c]
+        wages_avg_first = first(wages_avg)) %>% # note:  `first(jobs_sum, order_by=year)` caused segfault crash on Linux with dplyr 0.3.0.2, so using arrange above instead
+      # calculate final scores
+      ungroup() %>%
       mutate(
-        cntry_key = as.character(cntry_key)) %>%
-      filter(!is.na(value)) %>%
-      group_by(metric, cntry_key, sector) %>%
+        x_jobs  = pmax(-1, pmin(1,  jobs_sum / jobs_sum_first)),
+        x_wages = pmax(-1, pmin(1, wages_avg / wages_avg_first)),
+        score   = mean(c(x_jobs, x_wages), na.rm=T) * 100) %>%
+      # filter for most recent year
+      filter(year == max(year, na.rm=T)) %>%
+      # format
+      select(
+        region_id = rgn_id,
+        score) %>%
+      mutate(
+        goal      = 'LIV',
+        dimension = 'status')
+    
+    # LIV trend
+    # From SOM p. 29: trend was calculated as the slope in the individual sector values (not summed sectors)
+    # over the most recent five years...
+    # with the average weighted by the number of jobs in each sector
+    # ... averaging slopes across sectors weighted by the revenue in each sector
+    
+    # get trend across years as slope of individual sectors for jobs and wages
+    liv_trend = liv %>%
+      filter(!is.na(jobs_adj) & !is.na(wage_usd)) %>%
+      # TODO: consider "5 year time spans" as having 5 [(max(year)-4):max(year)] or 6 [(max(year)-5):max(year)] member years
+      filter(year >= max(year, na.rm=T) - 4) %>% # reference point is 5 years ago
+      # get sector weight as total jobs across years for given region
+      arrange(rgn_id, year, sector) %>%
+      group_by(rgn_id, sector) %>%
+      mutate(
+        weight = sum(jobs_adj, na.rm=T)) %>%
+      # reshape into jobs and wages columns into single metric to get slope of both with one do() call
+      reshape2::melt(id=c('rgn_id','year','sector','weight'), variable='metric', value.name='value') %>%
+      mutate(
+        sector = as.character(sector),
+        metric = as.character(metric)) %>%
+      # get linear model coefficient per metric
+      group_by(metric, rgn_id, sector, weight) %>%
       do(mdl = lm(value ~ year, data=.)) %>%
       summarize(
-        metric    = metric,
-        cntry_key = cntry_key,
-        sector    = sector,
-        trend     = max(-1, min(1, coef(mdl)[['year']] * 5))) %>%
-    # get sums for weight
-    left_join(
-      mcsy %>%
-        filter(!is.na(value)) %>%
-        group_by(metric, cntry_key, sector) %>%
-        summarize(
-          value_sum = sum(value)),
-      by=c('metric','cntry_key','sector'))
-  
-  # trend per metric-country 
-  mc = rbind_list(
-    # wage: simple average of sectors
-    mcs %>%
-      group_by(metric, cntry_key) %>%
-      filter(metric=='wage') %>%
+        metric = metric,
+        weight = weight,
+        rgn_id = rgn_id,
+        sector = sector,
+        # TODO: consider how the units affect trend; should these be normalized? cap per sector or later?
+        sector_trend = pmax(-1, pmin(1, coef(mdl)[['year']] * 5))) %>%
+      arrange(rgn_id, metric, sector) %>%
+      # get weighted mean across sectors per region-metric
+      group_by(metric, rgn_id) %>%
       summarize(
-        trend = mean(trend)),
-    # jobs and rev: weighted average by total jobs or rev per sector
-    mcs %>%
-      group_by(metric, cntry_key) %>%
-      filter(metric %in% c('jobs','rev')) %>%
+        metric_trend = weighted.mean(sector_trend, weight, na.rm=T)) %>%
+      # get mean trend across metrics (jobs, wages) per region
+      group_by(rgn_id) %>%
       summarize(
-        trend = weighted.mean(trend, value_sum)))
-
-  # trend per goal-country
-  gc = rbind_list(
-    # LIV: avg(jobs, wage)
-    mc %>%
-      group_by(cntry_key) %>%
-      filter(metric %in% c('jobs','wage') & !is.na(trend)) %>%
-      summarize(
-        score     = mean(trend),
-        component = 'livelihood'),
-    # ECO: rev
-    mc %>%
-      filter(metric %in% c('rev')) %>%
+        score = mean(metric_trend, na.rm=T)) %>%
+      # format
       mutate(
-        component = 'economy',
-        score     = trend)) %>%
-    select(component, cntry_key, score)
-  
-  # remove landlocked countries and check for any country codes still not matched
-  gc = filter(gc, !cntry_key %in% cntry_landlocked)
-  if (sum(!gc$cntry_key %in% cntry_rgn$cntry_key) != 0){
-    stop(sprintf('LIV_ECO trend missing country to region lookup for: %s.', paste(setdiff(gc$cntry_key, cntry_rgn$cntry_key), collapse=', ')))
+        goal      = 'LIV',
+        dimension = 'trend') %>%
+      select(
+        goal, dimension,
+        region_id = rgn_id,
+        score)
   }
-    
-  # aggregate countries to regions by weights
-  # TODO: migrate to using name_to_rgn()
-  gr = gc %>%
-    merge(cntry_rgn, by='cntry_key', all.x=T) %>%
-    merge(weights, by=c('cntry_key','component'), all.x=T) %>%
-    select(component, rgn_id, rgn_name, cntry_key, score, w) %>%
-    arrange(component, rgn_name, cntry_key) %>%
-    group_by(component, rgn_id, rgn_name) %>%
-    summarize(cntry_w     = paste(cntry_key[!is.na(w)], collapse=','),
-              cntry_w_na  = paste(cntry_key[is.na(w)], collapse=','),
-              n           = n(),
-              n_w_na      = sum(is.na(w)),
-              score_w_avg = weighted.mean(score, w),
-              score_avg   = mean(score),
-              w_sum       = sum(w, na.rm=T)) %>%
-    mutate(score = ifelse(!is.na(score_w_avg), score_w_avg, score_avg)) %>%
-    ungroup() %>%
-    filter(!is.na(rgn_id))
   
-  # georegional gap fill ----
-  data = gr %>%
-    filter(component==g.component) %>%
-    as.data.frame() %>%
-    select(rgn_id, score, w_sum)
   
-  # georegional gapfill, and output gapfill_georegions attributes
-  if (!file.exists('temp')) dir.create('temp', recursive=T)
-  csv = sprintf('temp/eez2013_%s-trend-gapfill-georegions.csv', subgoal)
-  rg = gapfill_georegions(
-    data              = data,
-    fld_id            = 'rgn_id',
-    fld_value         = 'score',
-    fld_weight        = 'w_sum',
-    georegions        = georegions,    
-    ratio_weights     = FALSE,
-    georegion_labels  = NULL,
-    r0_to_NA          = TRUE, 
-    attributes_csv    = csv)
-  
-  trend = rg %>% 
-    select(region_id=rgn_id, score) %>%    
+  # ECO calculations ----
+  eco = le_gdp %>%
     mutate(
-      goal      = subgoal,
-      dimension = 'trend',
-      score     = score) %>%
-    arrange(region_id)
+      rev_adj = gdp_usd,
+      sector = 'gdp') %>% 
+    # adjust rev with national GDP rates if available. Example: (rev_adj = gdp_usd / ntl_gdp) 
+    select(rgn_id, year, sector, rev_adj)
   
-  scores = rbind(status, trend)
-  return(scores)
+  # ECO status
+  eco_status = eco %>%
+    filter(!is.na(rev_adj)) %>%
+    filter(year >= max(year, na.rm=T) - 4) %>% # reference point is 5 years ago
+    # across sectors, revenue is summed
+    group_by(rgn_id, year) %>%
+    summarize(
+      rev_sum  = sum(rev_adj, na.rm=T)) %>%
+    # reference for revenue [e]: value in the current year (or most recent year) [c], relative to the value in a recent moving reference period [r] defined as 5 years prior to [c]  
+    arrange(rgn_id, year) %>%
+    group_by(rgn_id) %>%
+    mutate(
+      rev_sum_first  = first(rev_sum)) %>%
+    # calculate final scores
+    ungroup() %>%
+    mutate(
+      score  = pmin(rev_sum / rev_sum_first, 1) * 100) %>%
+    # get most recent year
+    filter(year == max(year, na.rm=T)) %>%
+    # format
+    mutate(
+      goal      = 'ECO',
+      dimension = 'status') %>%
+    select(
+      goal, dimension,
+      region_id = rgn_id,
+      score)
+  
+  # ECO trend
+  eco_trend = eco %>%
+    filter(!is.na(rev_adj)) %>%
+    filter(year >= max(year, na.rm=T) - 4 ) %>% # 5 year trend
+    # get sector weight as total revenue across years for given region
+    arrange(rgn_id, year, sector) %>%
+    group_by(rgn_id, sector) %>%
+    mutate(
+      weight = sum(rev_adj, na.rm=T)) %>%
+    # get linear model coefficient per region-sector
+    group_by(rgn_id, sector, weight) %>%
+    do(mdl = lm(rev_adj ~ year, data=.)) %>%
+    summarize(
+      weight = weight,
+      rgn_id = rgn_id,
+      sector = sector,
+      # TODO: consider how the units affect trend; should these be normalized? cap per sector or later?
+      sector_trend = pmax(-1, pmin(1, coef(mdl)[['year']] * 5))) %>%
+    # get weighted mean across sectors per region
+    group_by(rgn_id) %>%
+    summarize(
+      score = weighted.mean(sector_trend, weight, na.rm=T)) %>%
+    # format
+    mutate(
+      goal      = 'ECO',
+      dimension = 'trend') %>%
+    select(
+      goal, dimension,
+      region_id = rgn_id,
+      score)
+  
+  # report LIV and ECO scores separately
+  if (subgoal=='LIV'){
+    d = rbind(liv_status, liv_trend)
+  } else if (subgoal=='ECO'){
+    d = rbind(eco_status, eco_trend)
+  } else {
+    stop('LIV_ECO function only handles subgoal of "LIV" or "ECO"')
+  }
+  return(d)
+  
 }
 
-LE = function(scores, layers, eez2012=F){
-  
-  if (eez2012){
-    # replacing 2012 scores for ECO and LIV with 2013 data (email Feb 28, Ben H.)
-    # ECO: Eritrea (just this one country)
-    # LIV: Eritrea, Anguilla, Bermuda, Egypt, Ghana, Indonesia, Iceland, Saint Kitts, 
-    #      Sri Lanka, Brunei, Malaysia, Trinidad & Tobago, and Taiwan
-    
-    # replacement data and region names
-    scores_2013 <- read.csv('../eez2013/scores.csv')  
-    rgns = SelectLayersData(layers, layers='rgn_labels', narrow=T) %>%
-      select(region_id=id_num, label=val_chr) %>%
-      arrange(label)
-    
-    # ECO
-    ECO_rgn_id_replace = subset(rgns, label=='Eritrea', 'region_id', drop=T)
-    scores = scores %>%
-      filter(!(goal=='ECO' & dimension=='score' & region_id==ECO_rgn_id_replace)) %>%
-      rbind(
-        scores_2013 %>%
-          filter(goal=='ECO' & dimension=='score' & region_id==ECO_rgn_id_replace))
-    
-    # LIV
-    LIV_rgns_label_replace = c('Eritrea','Anguilla','Bermuda','Egypt','Ghana','Indonesia','Iceland','Saint Kitts and Nevis','Sri Lanka','Brunei','Malaysia','Trinidad and Tobago','Taiwan')
-    LIV_rgns_id_replace = subset(rgns, label %in% LIV_rgns_label_replace, 'region_id', drop=T)
-    stopifnot(length(LIV_rgns_label_replace)==length(LIV_rgns_id_replace))
-    scores = scores %>%
-      filter(!(goal=='LIV' & dimension=='score' & region_id %in% LIV_rgns_id_replace)) %>%
-      rbind(
-        scores_2013 %>%
-          filter(goal=='LIV' & dimension=='score' & region_id %in% LIV_rgns_id_replace))
-  }
+
+LE = function(scores, layers){
   
   # calculate LE scores
-  scores.LE = scores %>% 
-    filter(goal %in% c('LIV','ECO') & dimension %in% c('status','trend','score','future')) %>%
-    dcast(region_id + dimension ~ goal, value.var='score') %>%
-    mutate(score = rowMeans(cbind(ECO, LIV), na.rm=T)) %>%
-    select(region_id, dimension, score) %>%
+  scores.LE = scores %.% 
+    filter(goal %in% c('LIV','ECO') & dimension %in% c('status','trend','score','future')) %.%
+    dcast(region_id + dimension ~ goal, value.var='score') %.%
+    mutate(score = rowMeans(cbind(ECO, LIV), na.rm=T)) %.%
+    select(region_id, dimension, score) %.%
     mutate(goal  = 'LE')
-
-  # rbind to all scores
-  scores = scores %>%
-    rbind(scores.LE)  
   
-  # LIV, ECO and LE: nullify unpopulated regions and those of the Southern Ocean Islands
-  r_s_islands   = subset(SelectLayersData(layers, layers='rgn_georegions', narrow=T), 
-                         category=='r2' & val_num==999, id_num, drop=T)
-  r_unpopulated = subset(ddply(SelectLayersData(layers, layers='le_popn', narrow=T), .(id_num), summarize, 
-                               count = val_num[which.max(year)]),
-                         is.na(count) | count==0, id_num, drop=T)
-  scores[with(scores, 
-              goal %in% c('LIV','ECO','LE') & 
-                !dimension %in% c('pressures','resilience') & 
-                region_id %in% union(r_s_islands, r_unpopulated)),
-         'score'] = NA
+  # rbind to all scores
+  scores = scores %.%
+    rbind(scores.LE)  
   
   # return scores
   return(scores)  
 }
+
 
 ICO = function(layers){
   
