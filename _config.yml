@@ -1,15 +1,15 @@
-# Site wide configuration for https://ohi-science.org/17
+# Site wide configuration for https://ohi-science.org/blz
 title:       "OHI Belize"
 description: "Ocean Health Index for Belize"
 flag:        flag_80x40.png
 logo:        120x120.gif
 teaser:      400x250.gif
 locale:      en_US
-url:         //ohi-science.org/17
-baseurl:     /17
+url:         //ohi-science.org/blz
+baseurl:     /blz
 study_area:  Belize
 git_owner:   OHI-Science
-git_repo:    17
+git_repo:    blz
 git_slug:    OHI-Science/blz
 app_url:     https://ohi-science.shinyapps.io/blz_app
 
