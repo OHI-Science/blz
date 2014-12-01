@@ -1,4 +1,4 @@
-# Ocean Health Index for Belize [blz]
+# Ocean Health Index for Belize [17]
 
 Build status of branches:
 
