@@ -1,7 +1,7 @@
 "layer","targets","layer_old","name","description","fld_value","units","filename","fld_id_num","fld_id_chr","fld_category","fld_year","fld_val_num","fld_val_chr","file_exists","year_min","year_max","val_min","val_max","val_0to1","flds_unused","flds_missing","rows_duplicated","num_ids_unique","data_na","clip_n_ship_disag","clip_n_ship_disag_description"
 "ao_access","AO","rn_ao_access","Fisheries management effectiveness and opportunity","The opportunity for artisanal and recreational fishing based on the quality of management of the small- scale fishing sector (Mora et al 2009).
 
-Data sources:
+Data sources: 
 
 - Mora, C., Myers, R.A., Coll, M., Libralato, S., Pitcher, T.J., Sumaila, R.U., Worm, B. (2009). **Management Effectiveness of the Worldï¿s Marine Fisheries**. _PLoS Biol_, 7(6), e1000131. [doi:10.1371/journal.pbio.1000131](http://dx.doi.org/10.1371/journal.pbio.1000131)","value","value","ao_access.csv","rgn_id","","","","value","",TRUE,,,0,0.854,TRUE,,,,241,FALSE,"equal","global management effectiveness scores were applied equally to all regions."
 "ao_need","AO","rny_ao_need","Purchasing power parity as a proxy for subsistence fishing need, by region","The per capita purchasing power parity (PPP) adjusted gross domestic product (GDP): GDPpcPPP.
