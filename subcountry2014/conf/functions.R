@@ -420,11 +420,18 @@ AO = function(layers,
                            subset = .(layer %in% c('ao_access'))),
                      c('id_num'='region_id', 'ao_access'='access'))); head(r); summary(r)
 
-  ry = merge(ry, r); head(r); summary(r); dim(r)
+  rp = na.omit(rename(dcast(layers_data, id_num ~ layer, value.var='val_num',
+                           subset = .(layer %in% c('ao_need_pov'))),
+                     c('id_num'='region_id', 'ao_need_pov'='need_pov'))); head(rp); summary(rp)
+
+
+
+  ry = merge(ry, r)
+  ry = merge(ry, rp); head(r); summary(r); dim(r)
 
   # model
   ry = within(ry,{
-    Du = (1.0 - need) * (1.0 - access)
+    Du = (1.0 - (need + need_pov) / 2 ) * (1.0 - access)
     statusData = ((1.0 - Du) * Sustainability)
   })
 
