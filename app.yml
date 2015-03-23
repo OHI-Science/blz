@@ -8,7 +8,7 @@ app_url:          https://ohi-science.nceas.ucsb.edu/blz_app
 default_branch:   published
 default_scenario: subcountry2014
 debug:            False
-last_updated:     2015-03-20
+last_updated:     2015-03-23
 ohicore_app:
   git_owner: jules32
   git_repo: blz
@@ -16,6 +16,6 @@ ohicore_app:
   git_commit: moving App to NCEAS server
 
 tabs_hide:        
-- Calculate
-- Report
+- calculate
+- report
 
