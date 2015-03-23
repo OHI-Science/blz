@@ -1,6 +1,6 @@
 ---
 layout: article
-title: "Layers"
+title: Layers
 excerpt: "OHI layers for Belize"
 share: false
 ads: false
