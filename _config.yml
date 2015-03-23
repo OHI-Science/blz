@@ -11,7 +11,7 @@ study_area:  Belize
 git_owner:   OHI-Science
 git_repo:    blz
 git_slug:    OHI-Science/blz
-app_url:     https://ohi-science.shinyapps.io/blz_app
+app_url:     http://ohi-science.nceas.ucsb.edu/blz/
 
 default_branch_scenario: published/subcountry2014
 
