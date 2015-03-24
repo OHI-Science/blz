@@ -1,21 +1,21 @@
-# configuration for https://ohi-science.nceas.ucsb.edu/blz_app
+# configuration for https://ohi-science.nceas.ucsb.edu/blz
 study_area:       Belize
 git_owner:        OHI-Science
 git_repo:         blz
 git_slug:         OHI-Science/blz
 git_url:          https://github.com/OHI-Science/blz
-app_url:          https://ohi-science.nceas.ucsb.edu/blz_app
+app_url:          http://ohi-science.nceas.ucsb.edu/blz
 default_branch:   published
 default_scenario: subcountry2014
 debug:            False
-last_updated:     2015-03-23
+last_updated:     2015-03-24
 ohicore_app:
-  git_owner: jules32
-  git_repo: blz
-  git_branch: draft
-  git_commit: moving App to NCEAS server
+  git_owner: ohi-science
+  git_repo: ohicore
+  git_branch: dev
+  git_commit: 3d428b266e40346da767c1026938279977302a3a
 
 tabs_hide:        
-- calculate
-- report
+- Calculate
+- Report
 
