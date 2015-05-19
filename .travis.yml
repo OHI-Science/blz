@@ -6,7 +6,7 @@ env:
   global:
   - default_branch_scenario: "published/subcountry2014"
   - study_area: "Belize"
- matrix:
+matrix:
   fast_finish: true
 before_install:
 - curl -OL http://raw.github.com/craigcitro/r-travis/master/scripts/travis-tool.sh
