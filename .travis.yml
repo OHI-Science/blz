@@ -7,6 +7,7 @@ env:
   - default_branch_scenario="published/subcountry2014"
   - study_area="Belize"
   - secure: Sz7gwRC48QI9kHj3klJXD4uDrNGZ2VyLtpqlrdzTyD+QLe5qFaSpdbjUZzUshWHkVn+3Hg1Jcsa4i6JDRgYHesOqzia8iOLpW9JNq2f82yxjW5TNMfuUD7sZ5lVXxlFwSL/6QJmMMXh88ahcohUhGOpu1RxcIirevRhFxBxsYDE=
+  - secure: O0SNHtm0AYTXXeXiBjZJ3lYxz53GjUE94GAKSFyg7yH9aarplmbxnBgfwKTRFcLxNjjM3gxgsWDiNZN97Or47k0Dl0lAnBpggFb0eNMOue5GWi9NHYHx2FmN2JxNjG/cBYJCuJ5DENbBiu/YVmXKjh6gtwWCVNK4BdwlfSf0FoM=
 matrix:
   fast_finish: true
 before_install:
