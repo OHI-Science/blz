@@ -4,9 +4,10 @@ branches:
   - draft
 env:
   global:
-  - default_branch_scenario: "published/subcountry2014"
-  - study_area: "Belize"
+  - default_branch_scenario: published/subcountry2014
+  - study_area: Belize
   - secure: Ffpt6i47Z+Rbf4jn+L3Xg8ncI4Y67M1Pv4ESI0EHjginryjd+Uqh0U6SGv98tbBbJrXzu9vk5UJTi5B+k6fg9i5AC6+tMU0LexaXmnf9qIJi5bMxtRM1xz9G5DPF6q2SJoMZcWcYyOXBL8C7C2h5BxmWYVPk6OaUveH5OGRWWn8=
+  - secure: Rdg/tdFrindrQ4ku9BWT2N86VwehFdMutbanKAnzm/xI0MMx+P6k6YNGnVlVH90C+3axwcTXiYuBjJrprHycxghnxHXILtN0vaXcVFvSlSzQZ++0kSYdCNVYxnUCqQx7+9nYQTQ108de+jLd+6jRBTKwTbwiJwAS4f1yLSoLg8w=
 matrix:
   fast_finish: true
 before_install:
