@@ -425,7 +425,7 @@ AO = function(layers,
 
   # model
   ry = within(ry,{
-    Du = (1.0 - (need + need_pov) / 2 ) * (1.0 - access)
+    Du = (1.0 - need * (1.0 - access)
     statusData = ((1.0 - Du) * Sustainability)
   })
 
