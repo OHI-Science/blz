@@ -29,7 +29,7 @@ ohi_goals      <<- c('Index','FIS','FP','MAR','AO','NP','CS','CP','TR','LIV','LE
 
 # adding chunk for stand-alone shinyapp.io vs from ohicore::launch_app() function----
 if (file.exists('app.yml')){
-
+  
   # load configuration
   y = yaml.load_file('app.yml')
   for (o in ls(y)){
@@ -37,27 +37,27 @@ if (file.exists('app.yml')){
   }
   # paste(names(y), collapse=', '): git_owner, git_repo, git_slug, git_url, default_branch, default_scenario, debug, last_updated, ohicore_app, tabs_hide
   tabs_hide <<- tolower(tabs_hide)
-
+  
   dir_wd <<- getwd()
-
+  
 } else {
   # assuming launching from draft branch having .travis.yml with env$global$default_branch_scenario & env$global$study_area
-
+  
   # dir_scenario should be set in launch_app() when running locally (vs as standalone Shiny app)
   stopifnot(exists('dir_scenario'))
-
+  
   # load configuration
   dir_wd <<- dirname(dir_scenario)
   y = yaml.load_file(file.path(dir_wd, '.travis.yml'))
   # TODO!!!: change all .travis.yml from = to indented:
-
+  
   # extract default_branch_scenario, study_area from .travis.yml$env$global
   y = yaml.load_file(file.path(dir_wd, '.travis.yml'))
   v = unlist(y$env$global)
   for (n in names(v)){ # var = travis_yaml$env$global[[2]]
     assign(n, v[[n]])
   }
-
+  
   # set defaults otherwise set in app.yml of app branch
   git_owner               <<- 'OHI-Science'
   git_repo                <<- basename(dir_wd)
@@ -104,12 +104,12 @@ unlink(dir_archive, recursive=T)
 git_branches = setdiff(sapply(git2r::branches(repo, flags='remote'), function(x) str_replace(x@name, 'origin/', '')), c('gh-pages','app'))
 branch_commits = list()
 for (branch in git_branches){ # branch = 'published'
-
+  
   checkout(repo, branch=branch, force=T)
   branch_commits[[branch]] = commits(repo)
-
+  
   dir_branch = file.path(dir_archive, branch)
-
+  
   files = list.files(dir_repo, recursive=T)
   for (f in files){ # f = shiny_files[1]
     dir.create(dirname(file.path(dir_branch, f)), showWarnings=F, recursive=T)
@@ -258,7 +258,7 @@ get_wts = function(input){
           CW=input$CW,
           HAB=input$HAB,
           SPP=input$SPP)
-
+  
   # rescale so sums to 1
   wts = wts / sum(wts)
   return(wts)
@@ -271,14 +271,14 @@ capitalize <- function(s) { # capitalize first letter
 
 # get data
 GetMapData = function(v){
-
-
+  
+  
   #browser('GetMapData', expr=v$layer=='mar_harvest_tonnes')
-
-
+  
+  
   # check for single value
   if (n_distinct(v$data$val_num) == 1){
-
+    
     # check for single zero value
     if (unique(v$data$val_num) == 0){
       rng = c(-1, 1) * 0.001
@@ -286,7 +286,7 @@ GetMapData = function(v){
       # arbitrarily extend color ramp range to get a legit set of breaks
       rng = range(unique(v$data$val_num)*c(0.9999, 1, 1.0001), na.rm=T)
     }
-
+    
   } else {
     rng = range(v$data$val_num, na.rm=T)
   }
@@ -302,18 +302,18 @@ GetMapData = function(v){
 
 # plot map
 PlotMap = function(v, width='100%', height='600px', lon=0, lat=0, zoom=2){  # Baltic: c(59, 19), zoom = 5
-
+  
   #browser('PlotMap', expr=v$layer=='mar_harvest_tonnes')
-
+  
   if ( (length(na.omit(v$data$val_num))==0) | (!'rgn_id' %in% names(v$data)) ){
     stop(sprintf('Sorry, the Map view is unavailable for the selected layer (%s) because
                  the field %s does not have associated spatial shapes available for mapping.
                  Please choose a different view (Histogram or Table) or a different layer.', v$layer, v$fld_id))
     #return()
   }
-
+  
   d = GetMapData(v)
-
+  
   lmap <- Leaflet$new()
   lmap$mapOpts(worldCopyJump = TRUE)
   lmap$tileLayer(provide='Stamen.TonerLite')
@@ -323,89 +323,89 @@ PlotMap = function(v, width='100%', height='600px', lon=0, lat=0, zoom=2){  # Ba
   lmap$geoJson(
     "#! regions !#",
     style = sprintf("#! function(feature) {
-      regions_data = %s;
-      var rgn = feature.properties['rgn_id'].toString();
-      if (typeof regions_data[rgn] != 'undefined'){
-        var color = regions_data[rgn]['color'];
-      } else {
-        var color = 'gray';
-      };
-      return {
-        color: color,
-        strokeWidth: '1px',
-        strokeOpacity: 0.5,
-        fillOpacity: 0.2
-      }; } !#", gsub('\\\"', "'", toJSON(d$regions, collapse=' '))),
+                    regions_data = %s;
+                    var rgn = feature.properties['rgn_id'].toString();
+                    if (typeof regions_data[rgn] != 'undefined'){
+                    var color = regions_data[rgn]['color'];
+                    } else {
+                    var color = 'gray';
+                    };
+                    return {
+                    color: color,
+                    strokeWidth: '1px',
+                    strokeOpacity: 0.5,
+                    fillOpacity: 0.2
+                    }; } !#", gsub('\\\"', "'", toJSON(d$regions, collapse=' '))),
     onEachFeature = sprintf("#! function (feature, layer) {
-
-      // info rollover
-      if (document.getElementsByClassName('info leaflet-control').length == 0 ){
-        info = L.control({position: 'topright'});  // NOTE: made global b/c not ideal place to put this function
-        info.onAdd = function (map) {
-          this._div = L.DomUtil.create('div', 'info');
-          this.update();
-          return this._div;
-        };
-        info.update = function (props) {
-          if (props && typeof props['rgn_id'] != 'undefined' && typeof regions_data[props['rgn_id'].toString()] != 'undefined'){
-            var val_num = regions_data[props['rgn_id'].toString()]['val_num'];
-          } else {
-            var val_num = 'NA';
-          };
-
-          this._div.innerHTML = '<h4>%s</h4>' +  (props ?
-          	'<b>' + props['rgn_nam'] + '</b> (' + props['rgn_id'] + '): ' + val_num
-        		: 'Hover over a region');
-        };
-        info.addTo(map);
-      };
-
-      // mouse events
-      layer.on({
-
-        // mouseover to highlightFeature
-    	  mouseover: function (e) {
-          var layer = e.target;
-          layer.setStyle({
-            strokeWidth: '3px',
-            strokeOpacity: 0.7,
-            fillOpacity: 0.5
-          });
-        	if (!L.Browser.ie && !L.Browser.opera) {
-        		layer.bringToFront();
-        	}
-  	      info.update(layer.feature.properties);
-        },
-
-        // mouseout to resetHighlight
-  		  mouseout: function (e) {
-          geojsonLayer.resetStyle(e.target);
-  	      info.update();
-        },
-
-        // click to zoom
-  		  click: function (e) {
-          var layer = e.target;
-          if ( feature.geometry.type === 'MultiPolygon' ) {
-          // for multipolygons get true extent
-            var bounds = layer.getBounds(); // get the bounds for the first polygon that makes up the multipolygon
-            // loop through coordinates array, skip first element as the bounds var represents the bounds for that element
-            for ( var i = 1, il = feature.geometry.coordinates[0].length; i < il; i++ ) {
-              var ring = feature.geometry.coordinates[0][i];
-              var latLngs = ring.map(function(pair) {
-                return new L.LatLng(pair[1], pair[0]);
-              });
-              var nextBounds = new L.LatLngBounds(latLngs);
-              bounds.extend(nextBounds);
-            }
-            map.fitBounds(bounds);
-          } else {
-          // otherwise use native target bounds
-            map.fitBounds(e.target.getBounds());
-          }
-        }
-  	  });
-      } !#", HTML(v$name)))
+                            
+                            // info rollover
+                            if (document.getElementsByClassName('info leaflet-control').length == 0 ){
+                            info = L.control({position: 'topright'});  // NOTE: made global b/c not ideal place to put this function
+                            info.onAdd = function (map) {
+                            this._div = L.DomUtil.create('div', 'info');
+                            this.update();
+                            return this._div;
+                            };
+                            info.update = function (props) {
+                            if (props && typeof props['rgn_id'] != 'undefined' && typeof regions_data[props['rgn_id'].toString()] != 'undefined'){
+                            var val_num = regions_data[props['rgn_id'].toString()]['val_num'];
+                            } else {
+                            var val_num = 'NA';
+                            };
+                            
+                            this._div.innerHTML = '<h4>%s</h4>' +  (props ?
+                            '<b>' + props['rgn_nam'] + '</b> (' + props['rgn_id'] + '): ' + val_num
+                            : 'Hover over a region');
+                            };
+                            info.addTo(map);
+                            };
+                            
+                            // mouse events
+                            layer.on({
+                            
+                            // mouseover to highlightFeature
+                            mouseover: function (e) {
+                            var layer = e.target;
+                            layer.setStyle({
+                            strokeWidth: '3px',
+                            strokeOpacity: 0.7,
+                            fillOpacity: 0.5
+                            });
+                            if (!L.Browser.ie && !L.Browser.opera) {
+                            layer.bringToFront();
+                            }
+                            info.update(layer.feature.properties);
+                            },
+                            
+                            // mouseout to resetHighlight
+                            mouseout: function (e) {
+                            geojsonLayer.resetStyle(e.target);
+                            info.update();
+                            },
+                            
+                            // click to zoom
+                            click: function (e) {
+                            var layer = e.target;
+                            if ( feature.geometry.type === 'MultiPolygon' ) {
+                            // for multipolygons get true extent
+                            var bounds = layer.getBounds(); // get the bounds for the first polygon that makes up the multipolygon
+                            // loop through coordinates array, skip first element as the bounds var represents the bounds for that element
+                            for ( var i = 1, il = feature.geometry.coordinates[0].length; i < il; i++ ) {
+                            var ring = feature.geometry.coordinates[0][i];
+                            var latLngs = ring.map(function(pair) {
+                            return new L.LatLng(pair[1], pair[0]);
+                            });
+                            var nextBounds = new L.LatLngBounds(latLngs);
+                            bounds.extend(nextBounds);
+                            }
+                            map.fitBounds(bounds);
+                            } else {
+                            // otherwise use native target bounds
+                            map.fitBounds(e.target.getBounds());
+                            }
+                            }
+                            });
+                            } !#", HTML(v$name)))
   lmap$legend(position = 'bottomright',
               colors   =  names(d$legend),
               labels   =  as.vector(d$legend))
