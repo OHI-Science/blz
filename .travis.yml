@@ -6,7 +6,7 @@ env:
   global:
   - default_branch_scenario: published/subcountry2014
   - study_area: Belize
-  - secure: Ffpt6i47Z+Rbf4jn+L3Xg8ncI4Y67M1Pv4ESI0EHjginryjd+Uqh0U6SGv98tbBbJrXzu9vk5UJTi5B+k6fg9i5AC6+tMU0LexaXmnf9qIJi5bMxtRM1xz9G5DPF6q2SJoMZcWcYyOXBL8C7C2h5BxmWYVPk6OaUveH5OGRWWn8=
+  - secure: hEIelaPY3jd1WVD7uGf5yfDauFKqc72pfPyLpj9wUoxf9k46jeonm/ZQFuig0bh6HOYxcvJTgFjuefehMR7q4LpFt4+rnPOFKdjKMfrI1MKM/NTyu2S0rxG9Ex5+nCyWHLw9h4aEtqtnB+sPC6A+8bRkQpZk/llsrQxS+ua2hGY=
 matrix:
   fast_finish: true
 before_install:
