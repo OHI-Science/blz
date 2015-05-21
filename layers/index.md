@@ -48,7 +48,7 @@ Fisheries management effectiveness and opportunity
 <p>Data sources:</p>
 
 <ul>
-<li>Mora, C., Myers, R.A., Coll, M., Libralato, S., Pitcher, T.J., Sumaila, R.U., Worm, B. (2009). <strong>Management Effectiveness of the Worldí¿ŒËŒ´s Marine Fisheries</strong>. <em>PLoS Biol</em>, 7(6), e1000131. <a href="http://dx.doi.org/10.1371/journal.pbio.1000131">doi:10.1371/journal.pbio.1000131</a></li>
+<li>Mora, C., Myers, R.A., Coll, M., Libralato, S., Pitcher, T.J., Sumaila, R.U., Worm, B. (2009). <strong>Management Effectiveness of the World<92><c0><ce><e8>Î«s Marine Fisheries</strong>. <em>PLoS Biol</em>, 7(6), e1000131. <a href="http://dx.doi.org/10.1371/journal.pbio.1000131">doi:10.1371/journal.pbio.1000131</a></li>
 </ul>
 
 
@@ -71,21 +71,6 @@ Purchasing power parity as a proxy for subsistence fishing need, by region
 <ul>
 <li>The World Bank <a href="http://data.worldbank.org/indicator/NY.GDP.PCAP.PP.CD">GDP per capita, PPP (current international $)</a></li>
 </ul>
-
-
-
-## ao_need_pov
-
-Info
-
-| metadata          | value                                                                |
-|-------------------|----------------------------------------------------------------------|
-| filename          | ao_need_pov_blz2014.csv                                                   |
-| value units       | percent                                                      |
-| value range       | 0.0422235 to 0.1233978                               |
-| global extraction | :  |
-
-<p>description</p>
 
 
 
@@ -266,7 +251,7 @@ Fertilizer consumption as a proxy for trend in nutrient pollution
 <p>Data sources:</p>
 
 <ul>
-<li><a href="http://faostat3.fao.org/faostat-gateway/go/to/browse/R/*/E">FAOí¢ŒóŒ»s statistical database FAOSTAT</a>.</li>
+<li><a href="http://faostat3.fao.org/faostat-gateway/go/to/browse/R/*/E">FAO<92><a2>Î—<ce><c8>s statistical database FAOSTAT</a>.</li>
 </ul>
 
 
@@ -308,7 +293,7 @@ Pesticide consumption as a proxy for trend in chemical pollution
 <p>Data sources:</p>
 
 <ul>
-<li><a href="http://faostat3.fao.org/faostat-gateway/go/to/browse/R/*/E">FAOí¢ŒóŒ»s statistical database FAOSTAT</a>.</li>
+<li><a href="http://faostat3.fao.org/faostat-gateway/go/to/browse/R/*/E">FAO<92><a2>Î—<ce><c8>s statistical database FAOSTAT</a>.</li>
 </ul>
 
 
@@ -342,7 +327,7 @@ Catch data for each Taxon/FAO/SAUP region averaged across years (1980-2011)
 |-------------------|----------------------------------------------------------------------|
 | filename          | fis_meancatch_gl2014.csv                                                   |
 | value units       | metric tons                                                      |
-| value range       | 8.17638e-18 to 4787770                               |
+| value range       | 8.18e-18 to 4787770                               |
 | global extraction | equal: global mean catch information was applied equally to all regions. |
 
 <p>Mean catch-per-taxon values within each FAO major fishing area.</p>
@@ -761,7 +746,7 @@ High bycatch artisanal fishing practices as a proxy for subtidal hard bottom hab
 |-------------------|----------------------------------------------------------------------|
 | filename          | hd_subtidal_hb_gl2014.csv                                                   |
 | value units       | pressure score                                                      |
-| value range       | 0.03324169 to 0.03324169                               |
+| value range       | 0.03324168 to 0.03324168                               |
 | global extraction | equal: global pressures data were applied equally to all regions. |
 
 <p>The presence of destructive artisanal blast and poison (cyanide) fishing (Reefs at Risk Revisited).</p>
@@ -1000,7 +985,7 @@ Coastal protected areas inland 1km
 <p>Data sources:</p>
 
 <ul>
-<li>United Nations - World Conservation Monitoring Centreí¢ŒóŒ»s World Database on Protected Areas (WDPA) through <a href="http://www.protectedplanet.net">Protected Planet</a></li>
+<li>United Nations - World Conservation Monitoring Centre<92><a2>Î—<ce><c8>s World Database on Protected Areas (WDPA) through <a href="http://www.protectedplanet.net">Protected Planet</a></li>
 </ul>
 
 
@@ -1021,7 +1006,7 @@ Coastal marine protected areas offshore 3km
 <p>Data sources:</p>
 
 <ul>
-<li>United Nations - World Conservation Monitoring Centreí¢ŒóŒ»s World Database on Protected Areas (WDPA) through <a href="http://www.protectedplanet.net">Protected Planet</a></li>
+<li>United Nations - World Conservation Monitoring Centre<92><a2>Î—<ce><c8>s World Database on Protected Areas (WDPA) through <a href="http://www.protectedplanet.net">Protected Planet</a></li>
 </ul>
 
 
@@ -1106,7 +1091,7 @@ Mariculture sustainability score
 <p>Data sources:</p>
 
 <ul>
-<li>Trujillo P. (2008). <strong>Using a mariculture sustainability index to rank countriesí¢ŒóŒ» performances</strong>. In: A comparative assessment of biodiversity, fisheries and aquaculture in 53 countriesí¢ŒóŒ» Exclusive Economic Zones, Alder J, Pauly D, editors. <em>Fisheries Centre Research Report</em>, vol. 16(7) p. 28í¢ŒóŒñ56.</li>
+<li>Trujillo P. (2008). <strong>Using a mariculture sustainability index to rank countries<92><a2>Î—<ce><c8> performances</strong>. In: A comparative assessment of biodiversity, fisheries and aquaculture in 53 countries<92><a2>Î—<ce><c8> Exclusive Economic Zones, Alder J, Pauly D, editors. <em>Fisheries Centre Research Report</em>, vol. 16(7) p. 28<92><a2>Î—Î–56.</li>
 </ul>
 
 
@@ -1163,7 +1148,7 @@ CBD survey: mariculture
 <p>Data sources:</p>
 
 <ul>
-<li>Trujillo P. (2008). <strong>Using a mariculture sustainability index to rank countriesí¢ŒóŒ» performances</strong>. In: A comparative assessment of biodiversity, fisheries and aquaculture in 53 countriesí¢ŒóŒ» Exclusive Economic Zones, Alder J, Pauly D, editors. <em>Fisheries Centre Research Report</em>, vol. 16(7) p. 28í¢ŒóŒñ56.</li>
+<li>Trujillo P. (2008). <strong>Using a mariculture sustainability index to rank countries<92><a2>Î—<ce><c8> performances</strong>. In: A comparative assessment of biodiversity, fisheries and aquaculture in 53 countries<92><a2>Î—<ce><c8> Exclusive Economic Zones, Alder J, Pauly D, editors. <em>Fisheries Centre Research Report</em>, vol. 16(7) p. 28<92><a2>Î—Î–56.</li>
 </ul>
 
 
@@ -1607,7 +1592,7 @@ Introduced species as a proxy for genetic escapes
 <p>Data sources:</p>
 
 <ul>
-<li>Trujillo P. (2008). <strong>Using a mariculture sustainability index to rank countriesí¢ŒóŒ» performances</strong>. In: A comparative assessment of biodiversity, fisheries and aquaculture in 53 countriesí¢ŒóŒ» Exclusive Economic Zones, Alder J, Pauly D, editors. <em>Fisheries Centre Research Report</em>, vol. 16(7) p. 28í¢ŒóŒñ56.</li>
+<li>Trujillo P. (2008). <strong>Using a mariculture sustainability index to rank countries<92><a2>Î—<ce><c8> performances</strong>. In: A comparative assessment of biodiversity, fisheries and aquaculture in 53 countries<92><a2>Î—<ce><c8> Exclusive Economic Zones, Alder J, Pauly D, editors. <em>Fisheries Centre Research Report</em>, vol. 16(7) p. 28<92><a2>Î—Î–56.</li>
 </ul>
 
 
